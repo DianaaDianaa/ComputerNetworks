@@ -1,0 +1,37 @@
+import os.path
+import socket
+import struct
+import threading
+
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(('127.0.0.1', 1234))
+s.listen(5)
+
+client_count = 0
+
+def worker(_clientSocket, _clientAddress):
+    my_client = client_count
+    file_path = _clientSocket.recv(1024)
+    file_path = file_path.decode()
+    if os.path.isfile(file_path):
+        f = open(file_path)
+        file_content = f.read()
+        file_length = len(file_content)
+        f.close()
+    else:
+        file_content = ""
+        file_length = -1
+
+    print(f"Client no {client_count} address {_clientAddress[0]}:{_clientAddress[1]}\n")
+    print(f"Received the file path {file_path} from the client: {_clientAddress[0]}:{_clientAddress[1]}\n")
+    print(f"This is the file content: {file_content}\n This is the file length: {file_length}.")
+    _clientSocket.send(file_content.encode())
+    _clientSocket.send(struct.pack('!i', file_length))
+    _clientSocket.close()
+
+while True:
+    clientSocket, clientAddress = s.accept()
+    t = threading.Thread(target=worker, args=(clientSocket, clientAddress, ))
+    client_count += 1
+    t.start()
